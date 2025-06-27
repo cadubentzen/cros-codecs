@@ -102,9 +102,6 @@ pub(crate) fn tunings_to_libva_rc<const CLAMP_MIN_QP: u32, const CLAMP_MAX_QP: u
     // Unsed
     const QUALITY_FACTOR: u32 = 0;
 
-    // No limits
-    const TARGET_FRAME_SIZE: u32 = 0;
-
     // If ConstantQuality is used then set to it's value, otherwise use middle
     let initial_qp = match tunings.rate_control {
         RateControl::ConstantQuality(qp) => qp.clamp(min_qp, max_qp),
@@ -132,7 +129,6 @@ pub(crate) fn tunings_to_libva_rc<const CLAMP_MIN_QP: u32, const CLAMP_MAX_QP: u
         ICQ_QUALITY_FACTOR,
         max_qp,
         QUALITY_FACTOR,
-        TARGET_FRAME_SIZE,
     ))
 }
 
