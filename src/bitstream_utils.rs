@@ -469,11 +469,13 @@ pub struct BitWriter<W: Write> {
     out: W,
     nth_bit: u8,
     curr_byte: u8,
+    /// The number of bits written so far.
+    pub(crate) bits_written: usize,
 }
 
 impl<W: Write> BitWriter<W> {
     pub fn new(writer: W) -> Self {
-        Self { out: writer, curr_byte: 0, nth_bit: 0 }
+        Self { out: writer, curr_byte: 0, nth_bit: 0, bits_written: 0 }
     }
 
     /// Writes fixed bit size integer (up to 32 bit)
@@ -491,7 +493,6 @@ impl<W: Write> BitWriter<W> {
             self.write_bit((value & bit) == bit)?;
             written += 1;
         }
-
         Ok(written)
     }
 
@@ -506,6 +507,7 @@ impl<W: Write> BitWriter<W> {
             self.curr_byte = 0;
         }
 
+        self.bits_written += 1;
         Ok(())
     }
 
@@ -627,6 +629,7 @@ mod tests {
             writer.write_f(1, true).unwrap();
             writer.write_f(1, true).unwrap();
             writer.write_f(1, true).unwrap();
+            assert_eq!(writer.bits_written, 8);
         }
         assert_eq!(buf, vec![0b10001111u8]);
     }

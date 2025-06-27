@@ -39,10 +39,11 @@ impl<W: Write> EmulationPrevention<W> {
     }
 
     /// Writes a H.264 NALU header.
-    fn write_header(&mut self, idc: u8, type_: u8) -> NaluWriterResult<()> {
-        self.out.write_all(&[0x00, 0x00, 0x00, 0x01, (idc & 0b11) << 5 | (type_ & 0b11111)])?;
+    fn write_header(&mut self, idc: u8, type_: u8) -> NaluWriterResult<usize> {
+        let header = &[0x00, 0x00, 0x00, 0x01, (idc & 0b11) << 5 | (type_ & 0b11111)];
+        self.out.write_all(header)?;
 
-        Ok(())
+        Ok(header.len())
     }
 
     fn has_data_pending(&self) -> bool {
@@ -125,6 +126,10 @@ impl<W: Write> NaluWriter<W> {
         Self(BitWriter::new(EmulationPrevention::new(writer, ep_enabled)))
     }
 
+    pub fn bits_written(&self) -> usize {
+        self.0.bits_written
+    }
+
     /// Writes fixed bit size integer (up to 32 bit) output with emulation
     /// prevention if enabled. Corresponds to `f(n)` in H.264 spec.
     pub fn write_f<T: Into<u32>>(&mut self, bits: usize, value: T) -> NaluWriterResult<usize> {
@@ -177,7 +182,8 @@ impl<W: Write> NaluWriter<W> {
     /// Writes a H.264 NALU header.
     pub fn write_header(&mut self, idc: u8, _type: u8) -> NaluWriterResult<()> {
         self.0.flush()?;
-        self.0.inner_mut().write_header(idc, _type)?;
+        let num_bytes = self.0.inner_mut().write_header(idc, _type)?;
+        self.0.bits_written += num_bytes * 8;
         Ok(())
     }
 

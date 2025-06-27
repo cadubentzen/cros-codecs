@@ -10,6 +10,8 @@ use anyhow::Context;
 use libva::BufferType;
 use libva::Display;
 use libva::EncCodedBuffer;
+use libva::EncPackedHeaderParameter;
+use libva::EncPackedHeaderType;
 use libva::EncPictureParameter;
 use libva::EncPictureParameterBufferH264;
 use libva::EncSequenceParameter;
@@ -33,6 +35,9 @@ use crate::backend::vaapi::encoder::tunings_to_libva_rc;
 use crate::backend::vaapi::encoder::CodedOutputPromise;
 use crate::backend::vaapi::encoder::Reconstructed;
 use crate::backend::vaapi::encoder::VaapiBackend;
+use crate::codec::h264::nalu_writer::NaluWriter;
+use crate::codec::h264::nalu_writer::NaluWriterResult;
+use crate::codec::h264::parser::NaluType;
 use crate::codec::h264::parser::Pps;
 use crate::codec::h264::parser::Profile;
 use crate::codec::h264::parser::SliceHeader;
@@ -345,6 +350,123 @@ where
             header.slice_beta_offset_div2,
         )))
     }
+
+    fn build_enc_packed_slice_param_and_data(
+        request: &Request<'_, H>,
+    ) -> NaluWriterResult<(BufferType, BufferType)> {
+        const ENABLE_EMULATION_PREVENTION: bool = false;
+        let (lenght_in_bits, buffer) =
+            Self::build_slice_header(request, ENABLE_EMULATION_PREVENTION)?;
+        // println!("Slice header length: {} bits", lenght_in_bits);
+        // println!("buffer: {buffer:x?}");
+        // unimplemented!();
+        let packed_slice_param =
+            BufferType::EncPackedHeaderParameter(EncPackedHeaderParameter::new(
+                EncPackedHeaderType::Slice,
+                lenght_in_bits as u32,
+                ENABLE_EMULATION_PREVENTION,
+            ));
+        let packed_slice_data = BufferType::EncPackedHeaderData(buffer);
+        Ok((packed_slice_param, packed_slice_data))
+    }
+
+    // FIXME: move this to a common place
+    fn build_slice_header(
+        request: &Request<'_, H>,
+        emulation_prevention_enabled: bool,
+    ) -> NaluWriterResult<(usize, Vec<u8>)> {
+        let mut buffer = Vec::new();
+        let mut nalu_writer = NaluWriter::new(&mut buffer, emulation_prevention_enabled);
+
+        let sps = &request.sps;
+        let pps = &request.pps;
+        let header = &request.header;
+
+        let is_idr = request.is_idr;
+        let is_ref = request.dpb_meta.is_reference != IsReference::No;
+
+        // No support for B slices
+        assert!(header.slice_type.is_i() || header.slice_type.is_p());
+
+        // NALU header
+        // FIXME: use/create constants
+        if header.slice_type.is_i() {
+            nalu_writer.write_header(3, NaluType::SliceIdr as u8)?;
+        } else if header.slice_type.is_p() {
+            nalu_writer.write_header(2, NaluType::Slice as u8)?;
+        }
+
+        // first_mb_in_slice
+        nalu_writer.write_ue(header.first_mb_in_slice)?;
+        // slice_type
+        nalu_writer.write_ue(header.slice_type as u32)?;
+        // pic_parameter_set_id
+        nalu_writer.write_ue(pps.pic_parameter_set_id)?;
+        // frame_num
+        nalu_writer.write_u(sps.log2_max_frame_num_minus4 as usize + 4, header.frame_num)?;
+
+        if header.slice_type.is_i() {
+            // idr_pic_id
+            nalu_writer.write_ue(header.idr_pic_id)?;
+        }
+
+        if sps.pic_order_cnt_type == 0 {
+            nalu_writer.write_u(
+                sps.log2_max_pic_order_cnt_lsb_minus4 as usize + 4,
+                // FIXME: Double check spec and other impls about this.
+                header.pic_order_cnt_lsb,
+            )?;
+        } else {
+            unreachable!();
+        }
+
+        if header.slice_type.is_p() {
+            nalu_writer.write_u(1, header.num_ref_idx_active_override_flag as u32)?;
+            if header.num_ref_idx_active_override_flag {
+                // num_ref_idx_l0_active_minus1
+                nalu_writer.write_ue(header.num_ref_idx_l0_active_minus1)?;
+            }
+            // ref_pic_list_reordering
+            nalu_writer.write_u(1, 0u32)?;
+        }
+
+        // FIXME: use/create constants
+        if is_ref {
+            if is_idr {
+                nalu_writer.write_u(1, 0u32)?;
+                nalu_writer.write_u(1, 0u32)?;
+            } else {
+                nalu_writer.write_u(1, 0u32)?;
+            }
+        }
+
+        if pps.entropy_coding_mode_flag && !header.slice_type.is_i() {
+            nalu_writer.write_ue(header.cabac_init_idc)?;
+        }
+
+        nalu_writer.write_se(header.slice_qp_delta)?;
+
+        if pps.deblocking_filter_control_present_flag {
+            nalu_writer.write_ue(header.disable_deblocking_filter_idc)?;
+
+            if header.disable_deblocking_filter_idc != 1 {
+                nalu_writer.write_se(header.slice_alpha_c0_offset_div2)?;
+                nalu_writer.write_se(header.slice_beta_offset_div2)?;
+            }
+        }
+
+        if pps.entropy_coding_mode_flag {
+            while !nalu_writer.aligned() {
+                // Write 1 bit to align to byte boundary
+                nalu_writer.write_u(1, 1u32)?;
+            }
+        }
+
+        let bits_written = nalu_writer.bits_written();
+        drop(nalu_writer);
+
+        Ok((bits_written, buffer))
+    }
 }
 
 impl<M, H> StatelessH264EncoderBackend for VaapiBackend<M, H>
@@ -386,6 +508,10 @@ where
             .map(|entry| entry as Rc<dyn Any>)
             .collect();
 
+        // FIXME: Detect support for packed slice header beforehand.
+        let (packed_slice_param, packed_slice_data) =
+            Self::build_enc_packed_slice_param_and_data(&request).unwrap();
+
         // Clone picture using [`Picture::new_from_same_surface`] to avoid
         // creatig a shared cell picture between its references and processed
         // picture.
@@ -406,6 +532,11 @@ where
         picture.add_buffer(self.context().create_buffer(seq_param)?);
         picture.add_buffer(self.context().create_buffer(pic_param)?);
         picture.add_buffer(self.context().create_buffer(slice_param)?);
+
+        // FIXME: only do this if we support packed slice headers.
+        picture.add_buffer(self.context().create_buffer(packed_slice_param)?);
+        picture.add_buffer(self.context().create_buffer(packed_slice_data)?);
+
         picture.add_buffer(self.context().create_buffer(rc_param)?);
         picture.add_buffer(self.context().create_buffer(framerate_param)?);
 
@@ -414,18 +545,12 @@ where
         let picture = picture.render().context("picture render")?;
         let picture = picture.end().context("picture end")?;
 
-        // HACK: Make sure that slice nalu start code is at least 4 bytes.
-        // TODO: Use packed headers to supply slice header with nalu start code of size 4 and get
-        // rid of this hack.
-        let mut coded_output = request.coded_output;
-        coded_output.push(0);
-
         // libva will handle the synchronization of reconstructed surface with implicit fences.
         // Therefore return the reconstructed frame immediately.
         let reference_promise = ReadyPromise::from(recon);
 
         let bitstream_promise =
-            CodedOutputPromise::new(picture, references, coded_buf, coded_output);
+            CodedOutputPromise::new(picture, references, coded_buf, request.coded_output);
 
         Ok((reference_promise, bitstream_promise))
     }
