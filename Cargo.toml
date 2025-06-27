@@ -17,6 +17,7 @@ h265 = []
 vaapi-h265 = ["vaapi", "h265", "libva/h265"]
 av1 = []
 vaapi-av1 = ["vaapi", "av1", "libva/av1"]
+c2-wrapper = ["backend"]
 
 [dependencies]
 anyhow = { version = "1.0.75", optional = true }
@@ -53,3 +54,6 @@ required-features = ["backend"]
 [[example]]
 name = "perf_test"
 required-features = ["backend"]
+
+[patch.crates-io]
+cros-libva = { path = "../cros-libva/lib" }
