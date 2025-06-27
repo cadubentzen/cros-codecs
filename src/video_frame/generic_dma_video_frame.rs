@@ -538,11 +538,128 @@ impl VideoFrame for GenericDmaVideoFrame {
                 self.resolution().width,
                 self.resolution().height,
                 // TODO: Should we add USAGE_HINT_ENCODER support?
-                Some(UsageHint::USAGE_HINT_DECODER),
+                Some(UsageHint::USAGE_HINT_ENCODER),
                 vec![self.clone()],
             )
             .map_err(|_| "Error importing GenericDmaVideoFrame to VA-API".to_string())?;
 
-        Ok(ret.pop().unwrap())
+        let surface = ret.pop().unwrap();
+
+        Ok(surface)
+    }
+}
+
+impl GenericDmaVideoFrame {
+    #[cfg(feature = "vaapi")]
+    pub fn copy_to_surface(
+        &self,
+        dst_surface: &Surface<()>,
+        display: &Rc<Display>,
+    ) -> Result<(), String> {
+        if !self.is_contiguous() {
+            return Err("Copying non-contiguous GBM buffers to VA-API is not currently supported"
+                .to_string());
+        }
+
+        let src_surface = self.to_native_handle(display)?;
+
+        use libva::{VAProfile::VAProfileNone, *};
+
+        // TODO: implement proper bindings in cros-libva
+        let mut vpp_config = Default::default();
+        let mut vpp_context = Default::default();
+
+        let ret = unsafe {
+            vaCreateConfig(
+                display.handle(),
+                VAProfileNone,
+                VAEntrypoint::VAEntrypointVideoProc,
+                std::ptr::null_mut(),
+                0,
+                &mut vpp_config,
+            )
+        };
+        if ret != VA_STATUS_SUCCESS as i32 {
+            return Err(format!("Error creating VPP config: {ret:?}"));
+        }
+
+        let ret = unsafe {
+            vaCreateContext(
+                display.handle(),
+                vpp_config,
+                dst_surface.size().0 as i32,
+                dst_surface.size().1 as i32,
+                VA_PROGRESSIVE as i32,
+                &mut dst_surface.id(),
+                1,
+                &mut vpp_context,
+            )
+        };
+        if ret != VA_STATUS_SUCCESS as i32 {
+            unsafe { vaDestroyConfig(display.handle(), vpp_config) };
+            return Err(format!("Error creating VPP context: {ret:?}"));
+        }
+
+        let pipeline_param =
+            VAProcPipelineParameterBuffer { surface: src_surface.id(), ..Default::default() };
+        let mut params = [pipeline_param];
+
+        let mut pipeline_buf = Default::default();
+        let ret = unsafe {
+            vaCreateBuffer(
+                display.handle(),
+                vpp_context,
+                VABufferType::VAProcPipelineParameterBufferType,
+                std::mem::size_of::<VAProcPipelineParameterBuffer>() as u32,
+                1,
+                (&mut params).as_mut_ptr() as *mut _,
+                &mut pipeline_buf,
+            )
+        };
+
+        if ret != VA_STATUS_SUCCESS as i32 {
+            unsafe {
+                vaDestroyContext(display.handle(), vpp_context);
+                vaDestroyConfig(display.handle(), vpp_config);
+            }
+            return Err(format!("Error creating VPP pipeline buffer: {ret:?}"));
+        }
+
+        unsafe {
+            vaBeginPicture(display.handle(), vpp_context, dst_surface.id());
+            vaRenderPicture(display.handle(), vpp_context, &mut pipeline_buf, 1);
+            vaEndPicture(display.handle(), vpp_context);
+            vaSyncSurface(display.handle(), dst_surface.id());
+
+            vaDestroyBuffer(display.handle(), pipeline_buf);
+            vaDestroyContext(display.handle(), vpp_context);
+            vaDestroyConfig(display.handle(), vpp_config);
+        };
+
+        // TODO: detect and use vaCopy when possible instead as below, since it's faster.
+        // It doesn't work on AMD though.
+        
+        // let mut dst_object = _VACopyObject {
+        //     obj_type: VACopyObjectType::VACopyObjectSurface,
+        //     object: _VACopyObject__bindgen_ty_1 { surface_id: dst_surface.id() },
+        //     ..Default::default()
+        // };
+        // let mut src_object = _VACopyObject {
+        //     obj_type: VACopyObjectType::VACopyObjectSurface,
+        //     object: _VACopyObject__bindgen_ty_1 { surface_id: src_surface.id() },
+        //     ..Default::default()
+        // };
+
+        // let ret = unsafe {
+        //     vaCopy(display.handle(), &mut dst_object, &mut src_object, Default::default())
+        // };
+
+        // if ret != VA_STATUS_SUCCESS as i32 {
+        //     return Err(format!("Error copying GenericDmaVideoFrame to VA-API surface: {ret:?}"));
+        // }
+
+        // unsafe { vaSyncSurface(display.handle(), dst_surface.id()) };
+
+        Ok(())
     }
 }
