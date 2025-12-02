@@ -48,7 +48,7 @@ struct FormatMap {
 /// Maps a given VA_RT_FORMAT to a compatible decoded format in an arbitrary
 /// preferred order.
 #[allow(dead_code)]
-const FORMAT_MAP: [FormatMap; 10] = [
+const FORMAT_MAP: [FormatMap; 18] = [
     FormatMap {
         rt_format: libva::VA_RT_FORMAT_YUV420,
         va_fourcc: libva::VA_FOURCC_NV12,
@@ -98,6 +98,46 @@ const FORMAT_MAP: [FormatMap; 10] = [
         rt_format: libva::VA_RT_FORMAT_YUV444_12,
         va_fourcc: libva::VA_FOURCC_Y412,
         decoded_format: DecodedFormat::I412,
+    },
+    FormatMap {
+        rt_format: libva::VA_RT_FORMAT_RGB32,
+        va_fourcc: libva::VA_FOURCC_BGRA,
+        decoded_format: DecodedFormat::BGRA,
+    },
+    FormatMap {
+        rt_format: libva::VA_RT_FORMAT_RGB32,
+        va_fourcc: libva::VA_FOURCC_BGRX,
+        decoded_format: DecodedFormat::BGRX,
+    },
+    FormatMap {
+        rt_format: libva::VA_RT_FORMAT_RGB32,
+        va_fourcc: libva::VA_FOURCC_RGBA,
+        decoded_format: DecodedFormat::RGBA,
+    },
+    FormatMap {
+        rt_format: libva::VA_RT_FORMAT_RGB32,
+        va_fourcc: libva::VA_FOURCC_RGBX,
+        decoded_format: DecodedFormat::RGBX,
+    },
+    FormatMap {
+        rt_format: libva::VA_RT_FORMAT_RGB32,
+        va_fourcc: libva::VA_FOURCC_ARGB,
+        decoded_format: DecodedFormat::ARGB,
+    },
+    FormatMap {
+        rt_format: libva::VA_RT_FORMAT_RGB32,
+        va_fourcc: libva::VA_FOURCC_XRGB,
+        decoded_format: DecodedFormat::XRGB,
+    },
+    FormatMap {
+        rt_format: libva::VA_RT_FORMAT_RGB32,
+        va_fourcc: libva::VA_FOURCC_ABGR,
+        decoded_format: DecodedFormat::ABGR,
+    },
+    FormatMap {
+        rt_format: libva::VA_RT_FORMAT_RGB32,
+        va_fourcc: libva::VA_FOURCC_XBGR,
+        decoded_format: DecodedFormat::XBGR,
     },
 ];
 
@@ -154,6 +194,14 @@ impl TryFrom<&libva::VAImageFormat> for DecodedFormat {
             libva::VA_FOURCC_Y212 => Ok(DecodedFormat::I212),
             libva::VA_FOURCC_Y410 => Ok(DecodedFormat::I410),
             libva::VA_FOURCC_Y412 => Ok(DecodedFormat::I412),
+            libva::VA_FOURCC_BGRA => Ok(DecodedFormat::BGRA),
+            libva::VA_FOURCC_BGRX => Ok(DecodedFormat::BGRX),
+            libva::VA_FOURCC_RGBA => Ok(DecodedFormat::RGBA),
+            libva::VA_FOURCC_RGBX => Ok(DecodedFormat::RGBX),
+            libva::VA_FOURCC_ARGB => Ok(DecodedFormat::ARGB),
+            libva::VA_FOURCC_XRGB => Ok(DecodedFormat::XRGB),
+            libva::VA_FOURCC_ABGR => Ok(DecodedFormat::ABGR),
+            libva::VA_FOURCC_XBGR => Ok(DecodedFormat::XBGR),
             _ => Err(anyhow!("Unsupported format")),
         }
     }

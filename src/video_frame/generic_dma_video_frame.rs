@@ -526,6 +526,14 @@ impl VideoFrame for GenericDmaVideoFrame {
         // TODO: Add more supported formats
         let rt_format = match self.decoded_format().unwrap() {
             DecodedFormat::I420 | DecodedFormat::NV12 => libva::VA_RT_FORMAT_YUV420,
+            DecodedFormat::BGRA
+            | DecodedFormat::BGRX
+            | DecodedFormat::RGBA
+            | DecodedFormat::RGBX
+            | DecodedFormat::ARGB
+            | DecodedFormat::XRGB
+            | DecodedFormat::ABGR
+            | DecodedFormat::XBGR => libva::VA_RT_FORMAT_RGB32,
             _ => return Err("Format unsupported for VA-API export".to_string()),
         };
 

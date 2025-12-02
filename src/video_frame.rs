@@ -133,6 +133,14 @@ pub trait VideoFrame: Send + Sync + Sized + Debug + 'static {
             | DecodedFormat::I410
             | DecodedFormat::I412 => 3,
             DecodedFormat::NV12 | DecodedFormat::MM21 => 2,
+            DecodedFormat::BGRA
+            | DecodedFormat::BGRX
+            | DecodedFormat::RGBA
+            | DecodedFormat::RGBX
+            | DecodedFormat::ARGB
+            | DecodedFormat::XRGB
+            | DecodedFormat::ABGR
+            | DecodedFormat::XBGR => 1,
         }
     }
 
@@ -157,7 +165,17 @@ pub trait VideoFrame: Send + Sync + Sized + Debug + 'static {
                             2
                         }
                     }
-                    DecodedFormat::I444 | DecodedFormat::I410 | DecodedFormat::I412 => 1,
+                    DecodedFormat::I444
+                    | DecodedFormat::I410
+                    | DecodedFormat::I412
+                    | DecodedFormat::BGRA
+                    | DecodedFormat::BGRX
+                    | DecodedFormat::RGBA
+                    | DecodedFormat::RGBX
+                    | DecodedFormat::ARGB
+                    | DecodedFormat::XRGB
+                    | DecodedFormat::ABGR
+                    | DecodedFormat::XBGR => 1,
                 });
             }
         }
@@ -187,7 +205,15 @@ pub trait VideoFrame: Send + Sync + Sized + Debug + 'static {
                     | DecodedFormat::I210
                     | DecodedFormat::I212
                     | DecodedFormat::I410
-                    | DecodedFormat::I412 => 1,
+                    | DecodedFormat::I412
+                    | DecodedFormat::BGRA
+                    | DecodedFormat::BGRX
+                    | DecodedFormat::RGBA
+                    | DecodedFormat::RGBX
+                    | DecodedFormat::ARGB
+                    | DecodedFormat::XRGB
+                    | DecodedFormat::ABGR
+                    | DecodedFormat::XBGR => 1,
                 })
             }
         }
@@ -215,6 +241,14 @@ pub trait VideoFrame: Send + Sync + Sized + Debug + 'static {
                             2
                         }
                     }
+                    DecodedFormat::BGRA
+                    | DecodedFormat::BGRX
+                    | DecodedFormat::RGBA
+                    | DecodedFormat::RGBX
+                    | DecodedFormat::ARGB
+                    | DecodedFormat::XRGB
+                    | DecodedFormat::ABGR
+                    | DecodedFormat::XBGR => 4,
                 })
             }
         }
