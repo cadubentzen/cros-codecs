@@ -282,10 +282,37 @@ impl<V: VideoFrame> StatelessEncoder<V, VaapiBackend<V::MemDescriptor, Surface<V
     }
 }
 
+impl<D: SurfaceMemoryDescriptor, S: std::borrow::Borrow<Surface<D>> + 'static>
+    StatelessEncoder<S, VaapiBackend<D, S>>
+{
+    pub fn new_native_vaapi(
+        display: Arc<Display>,
+        config: EncoderConfig,
+        fourcc: Fourcc,
+        coded_size: Resolution,
+        low_power: bool,
+        blocking_mode: BlockingMode,
+    ) -> EncodeResult<Self> {
+        let bitrate_control = match config.initial_tunings.rate_control {
+            RateControl::ConstantBitrate(_) => libva::VA_RC_CBR,
+            RateControl::VariableBitrate { .. } => libva::VA_RC_VBR,
+            RateControl::ConstantQuality(_) => libva::VA_RC_CQP,
+        };
+
+        let va_profile = match config.bit_depth {
+            BitDepth::Depth8 => VAProfileVP9Profile0,
+            BitDepth::Depth10 | BitDepth::Depth12 => VAProfileVP9Profile2,
+        };
+
+        let backend =
+            VaapiBackend::new(display, va_profile, fourcc, coded_size, bitrate_control, low_power)?;
+
+        Self::new_vp9(backend, config, blocking_mode)
+    }
+}
+
 #[cfg(test)]
 pub(super) mod tests {
-    use std::rc::Rc;
-
     use libva::Display;
     use libva::UsageHint;
     use libva::VAEntrypoint::VAEntrypointEncSliceLP;
@@ -337,12 +364,12 @@ pub(super) mod tests {
             ],
         };
 
-        let display = Display::open().unwrap();
+        let display = Arc::new(Display::open().unwrap());
         let entrypoints = display.query_config_entrypoints(VAProfileVP9Profile0).unwrap();
         let low_power = entrypoints.contains(&VAEntrypointEncSliceLP);
 
         let mut backend = VaapiBackend::<Descriptor, Surface>::new(
-            Rc::clone(&display),
+            Arc::clone(&display),
             VAProfileVP9Profile0,
             fourcc,
             Resolution { width: WIDTH, height: HEIGHT },
@@ -463,8 +490,8 @@ pub(super) mod tests {
             ],
         };
 
-        let mut encoder = VaapiVp9Encoder::new_vaapi(
-            Rc::clone(&display),
+        let mut encoder = VaapiVp9Encoder::new_native_vaapi(
+            Arc::clone(&display),
             config,
             frame_layout.format.0,
             frame_layout.size,
@@ -474,7 +501,7 @@ pub(super) mod tests {
         .unwrap();
 
         let mut pool = VaSurfacePool::new(
-            Rc::clone(&display),
+            Arc::clone(&display),
             VA_RT_FORMAT_YUV420,
             Some(UsageHint::USAGE_HINT_ENCODER),
             Resolution { width: WIDTH as u32, height: HEIGHT as u32 },
@@ -553,8 +580,8 @@ pub(super) mod tests {
             ],
         };
 
-        let mut encoder = VaapiVp9Encoder::new_vaapi(
-            Rc::clone(&display),
+        let mut encoder = VaapiVp9Encoder::new_native_vaapi(
+            Arc::clone(&display),
             config,
             frame_layout.format.0,
             frame_layout.size,
@@ -564,7 +591,7 @@ pub(super) mod tests {
         .unwrap();
 
         let mut pool = VaSurfacePool::new(
-            Rc::clone(&display),
+            Arc::clone(&display),
             VA_RT_FORMAT_YUV420_10,
             Some(UsageHint::USAGE_HINT_ENCODER),
             Resolution { width: WIDTH as u32, height: HEIGHT as u32 },

@@ -25,7 +25,7 @@ pub mod codec;
 
 #[cfg(feature = "backend")]
 pub mod backend;
-#[cfg(feature = "c2-wrapper")]
+#[cfg(all(feature = "c2-wrapper", feature = "decoder"))]
 pub mod c2_wrapper;
 #[cfg(feature = "backend")]
 pub mod decoder;

@@ -17,6 +17,7 @@ use crate::utils::DmabufFrame;
 use crate::utils::UserPtrFrame;
 use crate::DecodedFormat;
 
+#[cfg(feature = "decoder")]
 pub mod decoder;
 pub mod encoder;
 pub mod surface_pool;

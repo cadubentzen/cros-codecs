@@ -435,8 +435,7 @@ where
     }
 }
 
-#[cfg(test)]
-pub(crate) mod tests {
+pub mod tests {
     use std::borrow::Borrow;
 
     use libva::VA_FOURCC_NV12;
@@ -450,7 +449,7 @@ pub(crate) mod tests {
     use crate::FrameLayout;
 
     fn map_surface<'a, M: SurfaceMemoryDescriptor>(
-        display: &Rc<Display>,
+        display: &Arc<Display>,
         surface: &'a Surface<M>,
         fourcc: u32,
     ) -> libva::Image<'a> {
@@ -461,14 +460,14 @@ pub(crate) mod tests {
     }
 
     fn map_surface_nv12<'a, M: SurfaceMemoryDescriptor>(
-        display: &Rc<Display>,
+        display: &Arc<Display>,
         surface: &'a Surface<M>,
     ) -> libva::Image<'a> {
         map_surface(display, surface, VA_FOURCC_NV12)
     }
 
     fn map_surface_p010<'a, M: SurfaceMemoryDescriptor>(
-        display: &Rc<Display>,
+        display: &Arc<Display>,
         surface: &'a Surface<M>,
     ) -> libva::Image<'a> {
         map_surface(display, surface, VA_FOURCC_P010)
@@ -476,7 +475,7 @@ pub(crate) mod tests {
 
     /// Uploads raw NV12 to Surface
     pub fn upload_nv12_img<M: SurfaceMemoryDescriptor>(
-        display: &Rc<Display>,
+        display: &Arc<Display>,
         surface: &Surface<M>,
         width: u32,
         height: u32,
@@ -519,14 +518,14 @@ pub(crate) mod tests {
     /// Helper struct. [`Iterator`] to fetch frames from [`SurfacePool`].
     pub struct PooledFrameIterator {
         counter: u64,
-        display: Rc<Display>,
+        display: Arc<Display>,
         pool: VaSurfacePool<()>,
         frame_layout: FrameLayout,
     }
 
     impl PooledFrameIterator {
         pub fn new(
-            display: Rc<Display>,
+            display: Arc<Display>,
             pool: VaSurfacePool<()>,
             frame_layout: FrameLayout,
         ) -> Self {
@@ -570,7 +569,7 @@ pub(crate) mod tests {
         #[allow(dead_code)]
         pub fn new(
             raw_iterator: I,
-            display: Rc<Display>,
+            display: Arc<Display>,
             pool: VaSurfacePool<()>,
             frame_layout: FrameLayout,
         ) -> Self {
@@ -603,7 +602,7 @@ pub(crate) mod tests {
     }
 
     pub fn upload_test_frame_nv12<M: SurfaceMemoryDescriptor>(
-        display: &Rc<Display>,
+        display: &Arc<Display>,
         surface: &Surface<M>,
         t: f32,
     ) {
@@ -628,7 +627,7 @@ pub(crate) mod tests {
     }
 
     pub fn upload_test_frame_p010<M: SurfaceMemoryDescriptor>(
-        display: &Rc<Display>,
+        display: &Arc<Display>,
         surface: &Surface<M>,
         t: f32,
     ) {
@@ -657,14 +656,14 @@ pub(crate) mod tests {
         counter: u64,
         max_count: u64,
         pool_iter: PooledFrameIterator,
-        display: Rc<Display>,
+        display: Arc<Display>,
         fourcc: Fourcc,
     }
 
     impl TestFrameGenerator {
         pub fn new(
             max_count: u64,
-            display: Rc<Display>,
+            display: Arc<Display>,
             pool: VaSurfacePool<()>,
             frame_layout: FrameLayout,
         ) -> Self {

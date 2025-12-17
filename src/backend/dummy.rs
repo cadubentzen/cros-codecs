@@ -5,4 +5,5 @@
 //! This file contains a dummy backends whose only purpose is to let the codec
 //! run so we can test it in isolation.
 
+#[cfg(feature = "decoder")]
 pub(crate) mod decoder;

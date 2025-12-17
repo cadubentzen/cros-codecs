@@ -633,12 +633,12 @@ pub(super) mod tests {
             ],
         };
 
-        let display = Display::open().unwrap();
+        let display = Arc::new(Display::open().unwrap());
         let entrypoints = display.query_config_entrypoints(VAProfileH264Main).unwrap();
         let low_power = entrypoints.contains(&VAEntrypointEncSliceLP);
 
         let mut backend = VaapiBackend::<Descriptor, Surface>::new(
-            Rc::clone(&display),
+            Arc::clone(&display),
             VAProfileH264Main,
             fourcc,
             Resolution { width: WIDTH, height: HEIGHT },
@@ -780,7 +780,7 @@ pub(super) mod tests {
         };
 
         let mut encoder = VaapiH264Encoder::new_native_vaapi(
-            Rc::clone(&display),
+            Arc::clone(&display),
             config,
             frame_layout.format.0,
             frame_layout.size,
@@ -790,7 +790,7 @@ pub(super) mod tests {
         .unwrap();
 
         let mut pool = VaSurfacePool::new(
-            Rc::clone(&display),
+            Arc::clone(&display),
             VA_RT_FORMAT_YUV420,
             Some(UsageHint::USAGE_HINT_ENCODER),
             Resolution { width: WIDTH as u32, height: HEIGHT as u32 },

@@ -238,7 +238,6 @@ pub fn simple_encode_loop<H>(
     Ok(())
 }
 
-#[cfg(test)]
 pub(crate) mod tests {
     #[cfg(feature = "v4l2")]
     use crate::encoder::FrameMetadata;

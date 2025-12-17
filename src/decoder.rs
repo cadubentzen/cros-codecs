@@ -9,6 +9,7 @@
 //!
 //! At the moment, only a [stateless] decoder interface is provided.
 
+#[cfg(feature = "decoder")]
 pub mod stateless;
 
 use std::collections::VecDeque;
@@ -73,6 +74,7 @@ pub struct StreamInfo {
 }
 
 /// Events that can be retrieved using the `next_event` method of a decoder.
+#[cfg(feature = "decoder")]
 pub enum DecoderEvent<H: DecodedHandle> {
     /// The next frame has been decoded.
     FrameReady(H),
@@ -140,6 +142,7 @@ pub type DynDecodedHandle<F> = Box<dyn DecodedHandle<Frame = F>>;
 
 /// A queue where decoding jobs wait until they are completed, at which point they can be
 /// retrieved.
+#[cfg(feature = "decoder")]
 struct ReadyFramesQueue<T> {
     /// Queue of all the frames waiting to be sent to the client.
     queue: VecDeque<T>,
@@ -148,6 +151,7 @@ struct ReadyFramesQueue<T> {
     poll_fd: EventFd,
 }
 
+#[cfg(feature = "decoder")]
 impl<T> ReadyFramesQueue<T> {
     /// Create a nwe `ReadyFramesQueue`.
     ///
@@ -174,6 +178,7 @@ impl<T> ReadyFramesQueue<T> {
     }
 }
 
+#[cfg(feature = "decoder")]
 impl<T> Extend<T> for ReadyFramesQueue<T> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         let len_before = self.queue.len();
@@ -186,6 +191,7 @@ impl<T> Extend<T> for ReadyFramesQueue<T> {
 
 /// Allows us to manipulate the frames list like an iterator without consuming it and resetting its
 /// display order counter.
+#[cfg(feature = "decoder")]
 impl<T> Iterator for ReadyFramesQueue<T> {
     type Item = T;
 
@@ -203,7 +209,7 @@ impl<T> Iterator for ReadyFramesQueue<T> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "decoder"))]
 mod tests {
     use nix::sys::epoll::Epoll;
     use nix::sys::epoll::EpollCreateFlags;
