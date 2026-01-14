@@ -570,6 +570,7 @@ impl<V: VideoFrame>
             coded_size,
             libva::VA_RC_CQP,
             low_power,
+            0,
         )?;
 
         Self::new_av1(backend, config, blocking_mode)
@@ -657,6 +658,7 @@ mod tests {
             Resolution { width: WIDTH, height: HEIGHT },
             libva::VA_RC_CQP,
             low_power,
+            0,
         )
         .unwrap();
 

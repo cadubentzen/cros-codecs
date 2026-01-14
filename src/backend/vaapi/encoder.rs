@@ -184,6 +184,7 @@ where
         coded_size: Resolution,
         bitrate_control: u32,
         low_power: bool,
+        packed_headers: u32,
     ) -> StatelessBackendResult<Self> {
         let format_map = FORMAT_MAP
             .iter()
@@ -193,17 +194,26 @@ where
         let rt_format = format_map.rt_format;
         let entrypoint = if low_power { VAEntrypointEncSliceLP } else { VAEntrypointEncSlice };
 
+        let mut config_attrs = vec![
+            libva::VAConfigAttrib {
+                type_: libva::VAConfigAttribType::VAConfigAttribRTFormat,
+                value: rt_format,
+            },
+            libva::VAConfigAttrib {
+                type_: libva::VAConfigAttribType::VAConfigAttribRateControl,
+                value: bitrate_control,
+            },
+        ];
+
+        if packed_headers != 0 {
+            config_attrs.push(libva::VAConfigAttrib {
+                type_: libva::VAConfigAttribType::VAConfigAttribEncPackedHeaders,
+                value: packed_headers,
+            });
+        }
+
         let va_config = display.create_config(
-            vec![
-                libva::VAConfigAttrib {
-                    type_: libva::VAConfigAttribType::VAConfigAttribRTFormat,
-                    value: rt_format,
-                },
-                libva::VAConfigAttrib {
-                    type_: libva::VAConfigAttribType::VAConfigAttribRateControl,
-                    value: bitrate_control,
-                },
-            ],
+            config_attrs,
             va_profile,
             entrypoint,
         )?;

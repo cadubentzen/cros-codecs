@@ -276,8 +276,15 @@ impl<V: VideoFrame> StatelessEncoder<V, VaapiBackend<V::MemDescriptor, Surface<V
             BitDepth::Depth10 | BitDepth::Depth12 => VAProfileVP9Profile2,
         };
 
-        let backend =
-            VaapiBackend::new(display, va_profile, fourcc, coded_size, bitrate_control, low_power)?;
+        let backend = VaapiBackend::new(
+            display,
+            va_profile,
+            fourcc,
+            coded_size,
+            bitrate_control,
+            low_power,
+            0,
+        )?;
         Self::new_vp9(backend, config, blocking_mode)
     }
 }
@@ -304,8 +311,15 @@ impl<D: SurfaceMemoryDescriptor, S: std::borrow::Borrow<Surface<D>> + 'static>
             BitDepth::Depth10 | BitDepth::Depth12 => VAProfileVP9Profile2,
         };
 
-        let backend =
-            VaapiBackend::new(display, va_profile, fourcc, coded_size, bitrate_control, low_power)?;
+        let backend = VaapiBackend::new(
+            display,
+            va_profile,
+            fourcc,
+            coded_size,
+            bitrate_control,
+            low_power,
+            0,
+        )?;
 
         Self::new_vp9(backend, config, blocking_mode)
     }
@@ -375,6 +389,7 @@ pub(super) mod tests {
             Resolution { width: WIDTH, height: HEIGHT },
             libva::VA_RC_CBR,
             low_power,
+            0,
         )
         .unwrap();
 

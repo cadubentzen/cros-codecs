@@ -632,8 +632,19 @@ impl<V: VideoFrame> StatelessEncoder<V, VaapiBackend<V::MemDescriptor, Surface<V
             RateControl::ConstantQuality(_) => libva::VA_RC_CQP,
         };
 
-        let backend =
-            VaapiBackend::new(display, va_profile, fourcc, coded_size, bitrate_control, low_power)?;
+        let packed_headers = libva::VA_ENC_PACKED_HEADER_SEQUENCE
+            | libva::VA_ENC_PACKED_HEADER_PICTURE
+            | libva::VA_ENC_PACKED_HEADER_SLICE;
+
+        let backend = VaapiBackend::new(
+            display,
+            va_profile,
+            fourcc,
+            coded_size,
+            bitrate_control,
+            low_power,
+            packed_headers,
+        )?;
 
         Self::new_h264(backend, config, blocking_mode)
     }
@@ -663,8 +674,19 @@ impl<D: SurfaceMemoryDescriptor, S: std::borrow::Borrow<Surface<D>> + 'static>
             RateControl::ConstantQuality(_) => libva::VA_RC_CQP,
         };
 
-        let backend =
-            VaapiBackend::new(display, va_profile, fourcc, coded_size, bitrate_control, low_power)?;
+        let packed_headers = libva::VA_ENC_PACKED_HEADER_SEQUENCE
+            | libva::VA_ENC_PACKED_HEADER_PICTURE
+            | libva::VA_ENC_PACKED_HEADER_SLICE;
+
+        let backend = VaapiBackend::new(
+            display,
+            va_profile,
+            fourcc,
+            coded_size,
+            bitrate_control,
+            low_power,
+            packed_headers,
+        )?;
 
         Self::new_h264(backend, config, blocking_mode)
     }
@@ -729,6 +751,10 @@ pub(super) mod tests {
         let entrypoints = display.query_config_entrypoints(VAProfileH264Main).unwrap();
         let low_power = entrypoints.contains(&VAEntrypointEncSliceLP);
 
+        let packed_headers = libva::VA_ENC_PACKED_HEADER_SEQUENCE
+            | libva::VA_ENC_PACKED_HEADER_PICTURE
+            | libva::VA_ENC_PACKED_HEADER_SLICE;
+
         let mut backend = VaapiBackend::<Descriptor, Surface>::new(
             Arc::clone(&display),
             VAProfileH264Main,
@@ -736,6 +762,7 @@ pub(super) mod tests {
             Resolution { width: WIDTH, height: HEIGHT },
             libva::VA_RC_CBR,
             low_power,
+            packed_headers,
         )
         .unwrap();
 
