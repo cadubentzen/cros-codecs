@@ -4,6 +4,7 @@
 
 use std::rc::Rc;
 
+use log::info;
 use log::trace;
 
 use crate::codec::h264::parser::Level;
@@ -160,6 +161,12 @@ impl<Picture, Reference>
 
         let mut headers = vec![];
         if idr || self.delegate.update_params_sets {
+            info!(
+                "Manual SPS: log2_max_frame_num_minus4={}, max_frame_num={}, limit={}",
+                sps.log2_max_frame_num_minus4,
+                1u32 << (sps.log2_max_frame_num_minus4 + 4),
+                self.limit
+            );
             Synthesizer::<Sps, &mut Vec<u8>>::synthesize(3, &sps, &mut headers, true)?;
             Synthesizer::<Pps, &mut Vec<u8>>::synthesize(3, &pps, &mut headers, true)?;
             self.delegate.update_params_sets = false;

@@ -375,6 +375,12 @@ where
     ) -> SynthesizerResult<(BufferType, BufferType)> {
         const REF_IDC: u8 = 3; // NAL ref_idc for SPS (highest priority)
 
+        info!(
+            "Packed SPS: log2_max_frame_num_minus4={}, max_frame_num={}",
+            sps.log2_max_frame_num_minus4,
+            1u32 << (sps.log2_max_frame_num_minus4 + 4)
+        );
+
         let mut buffer = Vec::new();
         Synthesizer::<Sps, _>::synthesize(
             REF_IDC,
