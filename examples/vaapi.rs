@@ -67,7 +67,7 @@ fn main() {
 
     pool.add_frames(vec![(); 16]).unwrap();
 
-    let mut frame_producer = TestFrameGenerator::new(100, display, pool, frame_layout);
+    let mut frame_producer = TestFrameGenerator::new(150, display, pool, frame_layout);
 
     let mut bitstream = Vec::new();
 
