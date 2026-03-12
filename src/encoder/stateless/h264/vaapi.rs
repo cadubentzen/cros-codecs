@@ -556,7 +556,7 @@ where
             let hrd_buffer_fullness = hrd_buffer_size * 3 / 4;
 
             let hrd_param = BufferType::EncMiscParameter(libva::EncMiscParameter::HRD(
-                libva::EncMiscParameterHRD::new(hrd_buffer_size, hrd_buffer_fullness),
+                libva::EncMiscParameterHRD::new(hrd_buffer_fullness, hrd_buffer_size),
             ));
             picture.add_buffer(self.context().create_buffer(hrd_param)?);
         }
